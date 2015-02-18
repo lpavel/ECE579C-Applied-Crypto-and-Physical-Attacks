@@ -1,0 +1,18 @@
+Here are implementations of the AES and RSA cryptosystems. These are the 2 most popular cryptosystems.
+
+The code has been written for the class ECE579C - 'Applied Cryptography and Physical Attacks' at WPI.
+
+Specifics of implementations:
+RSA:
+- follows the textbook RSA
+- get the inverse using the Extended Euclidean Algorithm for computing the gcd of 2 numbers
+- use square and multiply for logarithmic complexity when computing big powers
+
+
+AES:
+This implementation of AES follows very closely the algorithms and pseudocode presented in FIPS 197. The implementation offers compatibility for keys of all 3 accepted lengths: 128, 192 and 256. In order to set on which variant the algorithm should use, the global variables Nk and Nr need to be changed accordingly.
+
+
+A couple of short mentions to make the code easier to understand:
+- there are no matrices, but only lists. The function lInd(i,j) translates the arrays into matrices
+- bytearray(plaintext) returns a list that is transposed to what is used for operations in AES. Therefore, the reason why the it is reversed in the beginning and in the end is to make it easier to follow the standard.
