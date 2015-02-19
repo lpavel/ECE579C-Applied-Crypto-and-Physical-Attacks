@@ -10,6 +10,7 @@
 
 import time
 import sys
+from math import log
 sys.setrecursionlimit(4*2048)
 
 
@@ -102,13 +103,22 @@ def my_pow_P1(b,e,m):
 def MGF(seed,maskLen):
     '''returns a mask of length maskLen, generated from seed using SHA-256'''
     import hashlib
+    import math
     
     T=bytearray()
+    hLen = hashlib.sha256().digest_size # since we use SHA256
     
     #put your code here
-    
-    return T
 
+    for cnt in range(math.ceil(maskLen/hLen)):
+        T = T + bytearray(hashlib.sha256(
+            seed + bytearray(cnt.to_bytes(4, byteorder='big'))).digest())
+    return T [:maskLen]
+
+def bytes_size(n):
+    if n == 0:
+        return 1
+    return int(log(n, 256)) + 1
 
 def RSAESencrypt(N,e,m,L=bytearray()):
     '''Performs RSA PKCS #1 v2.1 encryption using the public key <N,e>
@@ -117,7 +127,7 @@ def RSAESencrypt(N,e,m,L=bytearray()):
 
     import hashlib
     import os
-
+    import binascii
     
     mLen = len(m)
     hLen = hashlib.sha256().digest_size # since we use SHA256
@@ -125,11 +135,23 @@ def RSAESencrypt(N,e,m,L=bytearray()):
     # put your code here:
 
     # check lengths
+    k = bytes_size(N)
+    is_long = False;
+    if len(m) > (k - (2 * hLen) - 2):
+        is_long = True;
     # generate DB
+    PS_size = (k - hLen - 1) - (1 + mLen + hLen)
+    PS = bytearray(0 for x in range(PS_size))
+    DB = bytearray(hashlib.sha256(L).digest()) + bytearray(PS) + bytearray(b'\x01') + m
+    print(DB)
+    if is_long is True:
+        raise IOError('Message too long')
     # seeding and masking
+    seed = os.urandom(hLen)
+    DBmask = MGF(seed, k - hLen - 1)
     # generate EM
     # perform encryption
-    c=bytearray()
+    c = bytearray()
 
     return c
 
@@ -247,7 +269,7 @@ else:
 # Test RSA Encryption and decryption:
 print('Starting first RSA Test: ',end = '')
 
-m = b'\x02\xff'
+m = bytearray(b'\x02\xff')
 c = RSAESencrypt(N,e,m)
 mp = RSAESdecrypt(N,d,c)
 if (mp!=m):
