@@ -4,8 +4,8 @@
 ##  Please implement the provided functions and assure that your code
 ##  works correctly for the example given below
 ##
-##  Name: <your name>
-##  Date: <submission date>
+##  Name: Laurentiu Pavel
+##  Date: Feb 19th
 ##
 
 import time
@@ -13,24 +13,90 @@ import sys
 sys.setrecursionlimit(4*2048)
 
 
+# function that get the bits from Right to Left
+def getBitsReversed(num):
+    bits = []
+    while(num):
+        bits.append(num % 2)
+        num = num // 2
+    return bits
 
+def getBits(num):
+    return getBitsReversed(num)[::-1]
+    
 def my_pow_SqMul(x,e,n):
-    ''' Performs modular exponentiation (b^e mod m)
+    ''' Performs modular exponentiation (x^e mod m)
         using the square and multiply algorithm'''
 
     # put your code here
-    y=0
+    y = 1
+    bits = getBits(e)
+#    print('bits:')
+#    print(bits)
+    for bit in bits:
+       y = y * y % n
+       if bit is 1:
+           y = y * x % n 
         
     return y
 
-def my_pow_SlWin(x,e,n,k=4):
+def my_pow_SlWin(b,e,n,k=4):
     ''' Performs modular exponentiation (b^e mod m)
         using the sliding window algorithm with window size k'''
 
     # put your code here
-    y=0
-        
+    #precomputation
+    x = []
+    x.append(0) # x[0] = 0 -> doesn't matter what it is
+    x.append(b)
+    x.append(b*b % n)
+    for i in range(1, 2**(k-1)):
+        x.append(x[2*i - 1] * x[2] % n)
+        x.append(0) # not used for anything but to jump to the next odd
+
+    #exponentiation
+    y = 1
+    bits = getBitsReversed(e)
+    
+    i = len(bits) - 1
+    while i > 0:
+        if bits[i] is 0:
+            y = y * y % n
+            i = i - 1
+        else:
+            p = max(1 + i - k, 0)
+            while bits[p] is 0:
+                p = p + 1
+            window = 0;
+            for j in range(p, i):
+                window = window | (bits[j] << (j - p))
+            window = window | (bits[i] << (i - p));
+                
+            l = i - p + 1
+            y = pow(y, pow(2,l), n)
+            y = y * x[window] % n
+            i = i - l
     return y
+
+#my implementation from project 1
+def my_pow_P1(b,e,m):
+    """ Computes b^e mod m using the square and multiply algorithm"""
+    if e == 0:
+        return 1
+
+    ## enter your source code here
+    x = 1
+    n = b
+    bit_pos = 1
+    while bit_pos <= e:
+        if e & bit_pos:
+            x = (x * b) % m
+        b = (b * b) % m
+        bit_pos = bit_pos << 1
+
+    
+    return x
+
 
 
 def MGF(seed,maskLen):
@@ -108,7 +174,8 @@ q = 7930196168679028813576159616193212598262721511162060246510529560516761462209
 N = p*q
 
 b = 3
-e = 2**1000-1
+#e = 2**1000-1
+e = 2**2024 - 3463456347 # much better e that doesn't have only ones
 m = N
 
 tic = time.clock()
@@ -126,6 +193,13 @@ out3 = my_pow_SlWin(b,e,m)
 toc = time.clock()
 Tslwin=toc-tic
 
+tic = time.clock()
+out4 = my_pow_P1(b,e,m)
+toc = time.clock()
+TMyPowP1=toc-tic
+
+
+
 
 if(out == out2):
     print('Square and multiply: works (in ',Tsqmul,'s)')
@@ -136,6 +210,12 @@ if(out == out3):
     print('Sliding Window:      works (in ',Tslwin,'s)')
 else:
     print('Sliding Window:      failed')
+
+if(out == out4):
+    print('My log pow from Project 1:      works (in ',TMyPowP1,'s)')
+else:
+    print('My log pow from Project 1:      failed')
+
 
 
 
