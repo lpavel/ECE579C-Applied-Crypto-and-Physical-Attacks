@@ -32,8 +32,6 @@ def my_pow_SqMul(x,e,n):
     # put your code here
     y = 1
     bits = getBits(e)
-#    print('bits:')
-#    print(bits)
     for bit in bits:
        y = y * y % n
        if bit is 1:
@@ -120,6 +118,7 @@ def bytes_size(n):
         return 1
     return int(log(n, 256)) + 1
 
+
 def RSAESencrypt(N,e,m,L=bytearray()):
     '''Performs RSA PKCS #1 v2.1 encryption using the public key <N,e>
         on message m (optinal: label L). Ciphertext c is returned.
@@ -131,11 +130,11 @@ def RSAESencrypt(N,e,m,L=bytearray()):
     
     mLen = len(m)
     hLen = hashlib.sha256().digest_size # since we use SHA256
+    k = bytes_size(N)
 
     # put your code here:
 
     # check lengths
-    k = bytes_size(N)
     is_long = False;
     if len(m) > (k - (2 * hLen) - 2):
         is_long = True;
@@ -143,18 +142,34 @@ def RSAESencrypt(N,e,m,L=bytearray()):
     PS_size = (k - hLen - 1) - (1 + mLen + hLen)
     PS = bytearray(0 for x in range(PS_size))
     DB = bytearray(hashlib.sha256(L).digest()) + bytearray(PS) + bytearray(b'\x01') + m
-    print(DB)
     if is_long is True:
-        raise IOError('Message too long')
+        raise IOError('encryption error')
     # seeding and masking
     seed = os.urandom(hLen)
     DBmask = MGF(seed, k - hLen - 1)
+    maskedDb = bytearray()
+    for i in range(len(DB)):
+        maskedDb.append(DBmask[i] ^ DB[i])
+    seedMask = MGF(maskedDb, hLen)
+    maskedSeed = bytearray()
+    for i in range(len(seed)):
+        maskedSeed.append(seedMask[i] ^ seed[i])
+
     # generate EM
+    EM = bytearray(b'\x00') + maskedSeed + maskedDb
     # perform encryption
-    c = bytearray()
+    message = int.from_bytes(EM, byteorder='big', signed=False)
+    cipherInt = pow(message, e, N)
+    
+    cipherBytes = bytearray(cipherInt.to_bytes(k, byteorder='big'))
+    
+    
+    return cipherBytes
 
-    return c
-
+def RSADAP(K, c):
+    if c < 0 or c > (N - 1):
+        raise IOError('ciphertext representative out of range')
+    return pow(c,d,N)
 
 def RSAESdecrypt(N,d,c,L=bytearray()):
     '''Performs RSA PKCS #1 v2.1 decryption using the private key <N,d>
@@ -167,13 +182,51 @@ def RSAESdecrypt(N,d,c,L=bytearray()):
 
     cLen = len(c)
     hLen = hashlib.sha256().digest_size # since we use SHA256
+    k = bytes_size(N)
 
     # put your code here:
     # check lengths
+    if len(L) > hLen:
+        raise IOError('Decryption Error')
+    if cLen is not k:
+        raise IOError('Decryption Error')
+    if k < (2 * hLen + 2):
+        raise IOError('Decryption Error')
+    
     # decrypt C
+    cipherInt = int.from_bytes(c, byteorder='big', signed=False)
+    m = RSADAP(k, cipherInt)
+    EM = bytearray(m.to_bytes(k, byteorder='big'))
     # separate EM
+    Y = EM[0]
+    maskedSeed = EM[1:hLen + 1]
+    maskedDb   = EM[hLen+1:]
+
     # remove masks
+    seedMask = MGF(maskedDb, hLen)
+    seed = bytearray()
+    for i in range(len(seedMask)):
+        seed.append(maskedSeed[i] ^ seedMask[i])
+
+    dbMask = MGF(seed, k - hLen - 1)
+    DB = bytearray()
+    for i in range(len(dbMask)):
+        DB.append(maskedDb[i] ^ dbMask[i])
+
+    lHash = DB[:hLen]
+    i = hLen
+    while DB[i] is 0:
+        i = i + 1
+
+    is_issue = False
+    if DB[i] is not 1:
+        is_issue = True
+
+    m = DB[i+1:]
+        
     # check DB
+    if is_issue is True:
+        raise IOError('decryption error')
 
     #Note.  Care must be taken to ensure that an opponent cannot
     #distinguish the different error conditions in Step 3.g, whether by
@@ -182,7 +235,6 @@ def RSAESdecrypt(N,d,c,L=bytearray()):
     #be able to obtain useful information about the decryption of the
     #ciphertext C, leading to a chosen-ciphertext attack such as the one
     #observed by Manger
-    m=bytearray()
     
     return m
     
