@@ -56,10 +56,9 @@ def my_pow_SlWin(b,e,n,k=4):
     #exponentiation
     y = 1
     bits = getBitsReversed(e)
-    
     i = len(bits) - 1
-    while i > 0:
-        if bits[i] is 0:
+    while i > -1:
+        if bits[i] == 0:
             y = y * y % n
             i = i - 1
         else:
@@ -70,12 +69,13 @@ def my_pow_SlWin(b,e,n,k=4):
             for j in range(p, i):
                 window = window | (bits[j] << (j - p))
             window = window | (bits[i] << (i - p));
-                
+
             l = i - p + 1
             y = pow(y, pow(2,l), n)
             y = y * x[window] % n
             i = i - l
     return y
+
 
 #my implementation from project 1
 def my_pow_P1(b,e,m):
@@ -249,7 +249,8 @@ N = p*q
 
 b = 3
 #e = 2**1000-1
-e = 2**2024 - 3463456347 # much better e that doesn't have only ones
+e = 2**2024 - 34322345327 # much better e that doesn't have only ones
+#e = 2**2024 - 1313131 # other test value that my implementations work on
 m = N
 
 tic = time.clock()
@@ -273,13 +274,20 @@ toc = time.clock()
 TMyPowP1=toc-tic
 
 
+# test my_pow: ensure that it returns same results as pow
+print('pow(9,8,124) is' + str(my_pow_SlWin(9,8,124) == pow(9,8,124)))
+print('pow(2,5,1234) is' + str(my_pow_SlWin(2,5,1234) == pow(2,5,1234)))
+print('pow(2,10,1000) is' + str(my_pow_SlWin(2,10,1000) == pow(2,10,1000)))
+print('pow(3,10,1000):' + str(my_pow_SlWin(3,10,1000) == pow(3,10,1000)))
+
+
 
 
 if(out == out2):
     print('Square and multiply: works (in ',Tsqmul,'s)')
 else:
     print('Square and multiply: failed')
-
+        
 if(out == out3):
     print('Sliding Window:      works (in ',Tslwin,'s)')
 else:

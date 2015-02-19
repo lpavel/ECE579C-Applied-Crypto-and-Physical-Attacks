@@ -4,8 +4,8 @@
 ##  works correctly. Please submit your code together with the 
 ##  requested answers through blackboard
 ##
-##  Name: <your name>
-##  Date: <submission date>
+##  Name: Laurentiu
+##  Date: Feb 19th 2014
 ##
 
 
@@ -21,20 +21,28 @@ cB0= 197969236886912254302487358920402549270612987516437634605708315677609307379
 mL = 5551127004224346732540041447130459612719964341547244614867081530681999098751857227135502353225820729573368011275461642270583332663127222657266851386364254519962447966984393184931527083142101967429051426762156299757064888960983539800249973792821565136744802664101720002728703324357123353301041293846831380875
 cL0 = 5036183509973413547981847834925954085566645568302589152680203009173253304224466509911544317472481218449497635532224602888580345300841559828574785126853457
 
-# xGCD:
+# xGCD: Taken form project 1
 def xgcd(a,b):
     """
     Returns g, x, y such that g = x*a + y*b = gcd(a,b).
     """
 
     ## enter your source code here
+
+    if b == 0:
+        return a, 1, 0
+    else:
+        g,x0,y0 = xgcd(b, a%b)
+        x = y0
+        y = x0 - (a//b) * y0 
    
     return (g,x,y)
 
 def BellcoreAttack(sig,sig_p,N):
     '''performs the Bellcore attack on a faulty RSA-CRT signature and returns factorization of N'''
     # put your code here
-
+    q,x,y = xgcd((sig - sig_p), N)
+    p = N // q
     return p,q
 
 
@@ -42,4 +50,20 @@ def LenstraAttack(m,sig_p,N,e):
     '''performs Lenstra's attack on a faulty RSA-CRT signature and returns factorization of N'''
     # put your code here
 
+    q,x,y = xgcd(pow(sig_p,e,N) - m, N)
+    p = N // q
     return p,q
+
+
+presB,qresB = BellcoreAttack(cB, cB0, N)
+if (presB * qresB) == N:
+    print('BellcoreAttack is working')
+else:
+    print('BellcoreAttack is not working')
+
+
+presL,qresL = LenstraAttack(mL, cL0, N, e)
+if (presL * qresL) == N:
+    print('LenstraAttack is working')
+else:
+    print('LenstraAttack is not working')
