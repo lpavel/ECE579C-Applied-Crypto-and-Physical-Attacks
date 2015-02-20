@@ -43,7 +43,12 @@ def BellcoreAttack(sig,sig_p,N):
     # put your code here
     q,x,y = xgcd((sig - sig_p), N)
     p = N // q
-    return p,q
+
+    phiN = (p - 1) * (q - 1)
+    g,x,y = xgcd(phiN, e)
+    d = y % phiN
+
+    return p,q,d
 
 
 def LenstraAttack(m,sig_p,N,e):
@@ -52,18 +57,28 @@ def LenstraAttack(m,sig_p,N,e):
 
     q,x,y = xgcd(pow(sig_p,e,N) - m, N)
     p = N // q
-    return p,q
+
+    phiN = (p - 1) * (q - 1)
+    g,x,y = xgcd(phiN, e)
+    d = y % phiN
+
+    return p,q,d
 
 
-presB,qresB = BellcoreAttack(cB, cB0, N)
+presB,qresB, dB = BellcoreAttack(cB, cB0, N)
 if (presB * qresB) == N:
     print('BellcoreAttack is working')
 else:
     print('BellcoreAttack is not working')
 
 
-presL,qresL = LenstraAttack(mL, cL0, N, e)
+presL,qresL, dL = LenstraAttack(mL, cL0, N, e)
 if (presL * qresL) == N:
     print('LenstraAttack is working')
 else:
     print('LenstraAttack is not working')
+
+if dL == dB:
+    print('D exponent found properly')
+else:
+    print('wrong answer for D')
