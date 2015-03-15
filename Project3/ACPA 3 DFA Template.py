@@ -60,6 +60,16 @@ faultytext2 = bytearray.fromhex('78f27277cf53e7085f944023fa97130f')
 Nb = 4
 
 # returns the equivalent of the matrix position into a list
+def transpose(state):
+    """Transposes a matrix. Done because the plaintext decryption comes
+        exactly the oposite than how the operations need to be made."""
+    newState = []
+    for i in range(Nb):
+        for j in range(Nb):
+            newState.append(state[lInd(j,i)])
+    return newState
+
+
 def lInd(i,j):
     return i*Nb + j
 
@@ -120,25 +130,70 @@ def AESFaultAttack(ct,ft):
         the function returns a list of subkey candidates.'''
     candidates = []
     regMixCols = mixCols(ct)
+    ct = transpose(ct)
+    ft = transpose(ft)
     for delta in range(0, 255):
-        deltaState = bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 ' +
-                                       padHex(str(hex(delta)[2:]), 4))
+        deltaState = transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 ' +
+                                       padHex(str(hex(delta)[2:]), 4)))
         deltaMixCols = mixCols(deltaState)
-        for k in range(0, 4294967295):
-            key = bytearray.fromhex(padHex(str(hex(k)[2:]),32))
+        for i in range(16):
+            print("dmi" + str(i) + ":" + str(deltaMixCols[i]))
+        k1 = 0
+        k2 = 0
+        k3 = 0
+        k4 = 0
+        for k1 in range(0, 255):
+#            print("k1 here")
+            key = transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00' +
+                                              padHex(str(hex(k1)[2:]),2) + padHex(str(hex(k2)[2:]),2) +
+                                              padHex(str(hex(k3)[2:]),2)  + padHex(str(hex(k4)[2:]),2) ))
             if addRoundKey(iSubBytes(addRoundKey(ct,key)),
-                           iSubBytes(addRoundKey(ft,key))) == deltaState:
-                print("k:" + str(k))
-                candidates.append(k); 
+                           iSubBytes(addRoundKey(ft,key)))[12] == deltaState[12]:
+                for k2 in range(0, 255):
+#                    print("k2 here")
+                    key = transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00' +
+                                                      padHex(str(hex(k1)[2:]),2) + padHex(str(hex(k2)[2:]),2) +
+                                                      padHex(str(hex(k3)[2:]),2)  + padHex(str(hex(k4)[2:]),2) ))
+                    if addRoundKey(iSubBytes(addRoundKey(ct,key)),
+                                   iSubBytes(addRoundKey(ft,key)))[9] == deltaState[13]:
+                        for k3 in range(0, 255):
+#                            print("k3 here")
+                            key = transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00' +
+                                                              padHex(str(hex(k1)[2:]),2) + padHex(str(hex(k2)[2:]),2) +
+                                                              padHex(str(hex(k3)[2:]),2)  + padHex(str(hex(k4)[2:]),2) ))
+                            if addRoundKey(iSubBytes(addRoundKey(ct,key)),
+                                           iSubBytes(addRoundKey(ft,key)))[6] == deltaState[14]:
+                                for k4 in range(0, 255):
+#                                    print("k4 here")
+                                    key = transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00' +
+                                                                      padHex(str(hex(k1)[2:]),2) + padHex(str(hex(k2)[2:]),2) +
+                                                                      padHex(str(hex(k3)[2:]),2)  + padHex(str(hex(k4)[2:]),2) ))
+                                    if addRoundKey(iSubBytes(addRoundKey(ct,key)),
+                                                   iSubBytes(addRoundKey(ft,key)))[3] == deltaState[15]:
+#                                        print("k:" + str(transpose(key)))
+                                        candidates.append(key); 
     return candidates
 
 keys = set()
+
+def lists_overlap(a, b):
+        return bool(set(a) & set(b))
 
 if __name__ == "__main__":
        
     candidates1 = AESFaultAttack(ciphertext1, faultytext1)
     candidates2 = AESFaultAttack(ciphertext2, faultytext2)
 
+#    print(lists_overlap(candidates1,candidates2))
+
+    
+    for candidate in candidates1:
+        if candidate in candidates2:
+            print(str(candidate) + " - yes")
+        else:
+            print(str(candidate) + " - no")
+    
+    
 #    print sharedItem(candidates1, candidates2)
     
 
