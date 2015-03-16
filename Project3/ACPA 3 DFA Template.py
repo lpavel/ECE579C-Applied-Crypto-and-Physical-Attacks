@@ -138,6 +138,12 @@ def padHex(hexStr, numBits):
         hexStr = "0" + hexStr
     return hexStr    
 
+def getStrHex(num):
+    return padHex(str(hex(num)[2:]),2)
+
+def getKey(keyString):
+    return shiftRows(transpose(bytearray.fromhex(keyString))) 
+
 def AESFaultAttack(ct,ft):
     ''' performs a key recovery attack on four bytes of the key
         using a correct and a faulty AES ciphertext.
@@ -151,37 +157,42 @@ def AESFaultAttack(ct,ft):
         k3 = 0
         k4 = 0
         for p1 in range(0, 255):
-            key = shiftRows(transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 ' +
-                                              padHex(str(hex(p1)[2:]),2) + ' ' +
-                                              padHex(str(hex(k2)[2:]),2) + ' ' +
-                                              padHex(str(hex(k3)[2:]),2) + ' ' +
-                                              padHex(str(hex(k4)[2:]),2) )))
-            rev = addRoundKey(iSubBytes(addRoundKey(ct,key)), iSubBytes(addRoundKey(ft,key))) 
+            keyZeros = '00 00 00 00 00 00 00 00 00 00 00 00 '
+            key = getKey( keyZeros +
+                          getStrHex(p1) + ' ' +
+                          getStrHex(k2) + ' ' +
+                          getStrHex(k3) + ' ' +
+                          getStrHex(k4))
+            rev = addRoundKey(iSubBytes(addRoundKey(ct,key)),
+                              iSubBytes(addRoundKey(ft,key))) 
             if rev[lInd(0,3)] == deltaMixCols[lInd(0,3)]:
                 for p2 in range(0, 255):
-                    key = shiftRows(transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 ' +
-                                                      padHex(str(hex(p1)[2:]),2) + ' ' +
-                                                      padHex(str(hex(p2)[2:]),2) + ' ' +
-                                                      padHex(str(hex(k3)[2:]),2) + ' ' +
-                                                      padHex(str(hex(k4)[2:]),2) )))
+                    key = getKey( keyZeros +
+                                  getStrHex(p1) + ' ' +
+                                  getStrHex(p2) + ' ' +
+                                  getStrHex(k3) + ' ' +
+                                  getStrHex(k4))
                     
-                    rev = addRoundKey(iSubBytes(addRoundKey(ct,key)), iSubBytes(addRoundKey(ft,key))) 
+                    rev = addRoundKey(iSubBytes(addRoundKey(ct,key)),
+                                      iSubBytes(addRoundKey(ft,key))) 
                     if rev[lInd(1,2)] == deltaMixCols[lInd(1,3)]:
                         for p3 in range(0, 255):
-                            key = shiftRows(transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 ' +
-                                                              padHex(str(hex(p1)[2:]),2) + ' ' +
-                                                              padHex(str(hex(p2)[2:]),2) + ' ' +
-                                                              padHex(str(hex(p3)[2:]),2) + ' ' +
-                                                              padHex(str(hex(k4)[2:]),2) )))
-                            rev = addRoundKey(iSubBytes(addRoundKey(ct,key)), iSubBytes(addRoundKey(ft,key)))
+                            key = getKey( keyZeros +
+                                          getStrHex(p1) + ' ' +
+                                          getStrHex(p2) + ' ' +
+                                          getStrHex(p3) + ' ' +
+                                          getStrHex(k4))
+                            rev = addRoundKey(iSubBytes(addRoundKey(ct,key)),
+                                              iSubBytes(addRoundKey(ft,key)))
                             if rev[lInd(2,1)] == deltaMixCols[lInd(2,3)]:
                                 for p4 in range(0, 255):
-                                    key = shiftRows(transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 ' +
-                                                                      padHex(str(hex(p1)[2:]),2) + ' ' +
-                                                                      padHex(str(hex(p2)[2:]),2) + ' ' +
-                                                                      padHex(str(hex(p3)[2:]),2) + ' ' +
-                                                                      padHex(str(hex(p4)[2:]),2) )))
-                                    rev = addRoundKey(iSubBytes(addRoundKey(ct,key)), iSubBytes(addRoundKey(ft,key)))
+                                    key = getKey( keyZeros +
+                                                  getStrHex(p1) + ' ' +
+                                                  getStrHex(p2) + ' ' +
+                                                  getStrHex(p3) + ' ' +
+                                                  getStrHex(p4))
+                                    rev = addRoundKey(iSubBytes(addRoundKey(ct,key)),
+                                                      iSubBytes(addRoundKey(ft,key)))
                                     if rev[lInd(3,0)] == deltaMixCols[lInd(3,3)]:
                                         candidates.append(key); 
     return candidates
