@@ -50,16 +50,17 @@ ciphertext2 = int.to_bytes(0x78f272c7cf5383085fa240236d97130f,16,'big')
 faultytext2 = int.to_bytes(0x78f27277cf53e7085f944023fa97130f,16,'big')
 '''
 
-ciphertext1 = bytearray.fromhex('e719f8ab9e0b846f0cf2e5c32a0e5b45')
-faultytext1 = bytearray.fromhex('e719f86f9e0beb6f0c97e5c38b0e5b45')
-
-ciphertext2 = bytearray.fromhex('78f272c7cf5383085fa240236d97130f')
-faultytext2 = bytearray.fromhex('78f27277cf53e7085f944023fa97130f')
-
-
 Nb = 4
 
 # returns the equivalent of the matrix position into a list
+def lInd(i,j):
+    return i*Nb + j
+
+
+def rotateWord(word, pos):
+    """Performs the rotation of a word by a specified number of positions"""
+    return word[pos:] + word[0:pos]
+
 def transpose(state):
     """Transposes a matrix. Done because the plaintext decryption comes
         exactly the oposite than how the operations need to be made."""
@@ -70,8 +71,20 @@ def transpose(state):
     return newState
 
 
-def lInd(i,j):
-    return i*Nb + j
+    
+ciphertext1 = transpose(bytearray.fromhex('e719f8ab9e0b846f0cf2e5c32a0e5b45'))
+faultytext1 = transpose(bytearray.fromhex('e719f86f9e0beb6f0c97e5c38b0e5b45'))
+
+ciphertext2 = transpose(bytearray.fromhex('78f272c7cf5383085fa240236d97130f'))
+faultytext2 = transpose(bytearray.fromhex('78f27277cf53e7085f944023fa97130f'))
+
+
+def shiftRows(state):
+    """Performs shiftRows operation on the state."""
+    # put your code here
+    for i in range(Nb):
+        state[i*4:i*4+4] = rotateWord(state[i*4:i*4+4], i)
+    return state
 
 def gMult(a, b):
     """Taken from project 1"""
@@ -89,112 +102,104 @@ def gMult(a, b):
 def mixCols(state):
     """Taken from project 1"""
     # put your code here
+    newState = state
     for c in range(Nb):
         s0c = state[lInd(0,c)]
         s1c = state[lInd(1,c)]
         s2c = state[lInd(2,c)]
         s3c = state[lInd(3,c)]
         
-        state[lInd(0,c)] = gMult(0x02, s0c) ^ gMult(0x03, s1c) ^ s2c ^ s3c
-        state[lInd(1,c)] = s0c ^ gMult(0x02, s1c) ^ gMult(0x03, s2c) ^ s3c
-        state[lInd(2,c)] = s0c ^ s1c ^ gMult(0x02, s2c) ^ gMult(0x03, s3c)
-        state[lInd(3,c)] = gMult(0x03, s0c) ^ s1c ^ s2c ^ gMult(0x02, s3c)
-    return state
+        newState[lInd(0,c)] = gMult(0x02, s0c) ^ gMult(0x03, s1c) ^ s2c ^ s3c
+        newState[lInd(1,c)] = s0c ^ gMult(0x02, s1c) ^ gMult(0x03, s2c) ^ s3c
+        newState[lInd(2,c)] = s0c ^ s1c ^ gMult(0x02, s2c) ^ gMult(0x03, s3c)
+        newState[lInd(3,c)] = gMult(0x03, s0c) ^ s1c ^ s2c ^ gMult(0x02, s3c)
+    return newState
 
 def iSubBytes(state):
     """Performs inverse SubBytes operation on the state."""
 
     # put your code here
+    newState = []
     for i in range(Nb * Nb):
-        state[i] = iSbox[state[i]]
-    return state      
+        newState.append(iSbox[state[i]])
+    return newState      
 
 def addRoundKey(state, key):
     """Adds (XORs) the round key to the state."""
     
     # put your code here
-    for i in range(Nb):
-        for j in range(Nb):
-            state[lInd(j,i)] ^= key[lInd(j, i)]
-    return state
+    newState = []
+    for i in range(Nb * Nb):
+            newState.append(state[i] ^ key[i])
+    return newState
 
 def padHex(hexStr, numBits):
     for i in range(len(hexStr), numBits):
-        hexStr = hexStr + "0"
-    return hexStr[::-1]
-    
+        hexStr = "0" + hexStr
+    return hexStr    
 
 def AESFaultAttack(ct,ft):
     ''' performs a key recovery attack on four bytes of the key
         using a correct and a faulty AES ciphertext.
         the function returns a list of subkey candidates.'''
     candidates = []
-    regMixCols = mixCols(ct)
-    ct = transpose(ct)
-    ft = transpose(ft)
     for delta in range(0, 255):
-        deltaState = transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 ' +
-                                       padHex(str(hex(delta)[2:]), 4)))
+        deltaState = bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ' +
+                                       padHex(str(hex(delta)[2:]), 2))
         deltaMixCols = mixCols(deltaState)
-        for i in range(16):
-            print("dmi" + str(i) + ":" + str(deltaMixCols[i]))
-        k1 = 0
         k2 = 0
         k3 = 0
         k4 = 0
-        for k1 in range(0, 255):
-#            print("k1 here")
-            key = transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00' +
-                                              padHex(str(hex(k1)[2:]),2) + padHex(str(hex(k2)[2:]),2) +
-                                              padHex(str(hex(k3)[2:]),2)  + padHex(str(hex(k4)[2:]),2) ))
-            if addRoundKey(iSubBytes(addRoundKey(ct,key)),
-                           iSubBytes(addRoundKey(ft,key)))[12] == deltaState[12]:
-                for k2 in range(0, 255):
-#                    print("k2 here")
-                    key = transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00' +
-                                                      padHex(str(hex(k1)[2:]),2) + padHex(str(hex(k2)[2:]),2) +
-                                                      padHex(str(hex(k3)[2:]),2)  + padHex(str(hex(k4)[2:]),2) ))
-                    if addRoundKey(iSubBytes(addRoundKey(ct,key)),
-                                   iSubBytes(addRoundKey(ft,key)))[9] == deltaState[13]:
-                        for k3 in range(0, 255):
-#                            print("k3 here")
-                            key = transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00' +
-                                                              padHex(str(hex(k1)[2:]),2) + padHex(str(hex(k2)[2:]),2) +
-                                                              padHex(str(hex(k3)[2:]),2)  + padHex(str(hex(k4)[2:]),2) ))
-                            if addRoundKey(iSubBytes(addRoundKey(ct,key)),
-                                           iSubBytes(addRoundKey(ft,key)))[6] == deltaState[14]:
-                                for k4 in range(0, 255):
-#                                    print("k4 here")
-                                    key = transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00' +
-                                                                      padHex(str(hex(k1)[2:]),2) + padHex(str(hex(k2)[2:]),2) +
-                                                                      padHex(str(hex(k3)[2:]),2)  + padHex(str(hex(k4)[2:]),2) ))
-                                    if addRoundKey(iSubBytes(addRoundKey(ct,key)),
-                                                   iSubBytes(addRoundKey(ft,key)))[3] == deltaState[15]:
-#                                        print("k:" + str(transpose(key)))
+        for p1 in range(0, 255):
+            key = shiftRows(transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 ' +
+                                              padHex(str(hex(p1)[2:]),2) + ' ' +
+                                              padHex(str(hex(k2)[2:]),2) + ' ' +
+                                              padHex(str(hex(k3)[2:]),2) + ' ' +
+                                              padHex(str(hex(k4)[2:]),2) )))
+            rev = addRoundKey(iSubBytes(addRoundKey(ct,key)), iSubBytes(addRoundKey(ft,key))) 
+            if rev[lInd(0,3)] == deltaMixCols[lInd(0,3)]:
+                for p2 in range(0, 255):
+                    key = shiftRows(transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 ' +
+                                                      padHex(str(hex(p1)[2:]),2) + ' ' +
+                                                      padHex(str(hex(p2)[2:]),2) + ' ' +
+                                                      padHex(str(hex(k3)[2:]),2) + ' ' +
+                                                      padHex(str(hex(k4)[2:]),2) )))
+                    
+                    rev = addRoundKey(iSubBytes(addRoundKey(ct,key)), iSubBytes(addRoundKey(ft,key))) 
+                    if rev[lInd(1,2)] == deltaMixCols[lInd(1,3)]:
+                        for p3 in range(0, 255):
+                            key = shiftRows(transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 ' +
+                                                              padHex(str(hex(p1)[2:]),2) + ' ' +
+                                                              padHex(str(hex(p2)[2:]),2) + ' ' +
+                                                              padHex(str(hex(p3)[2:]),2) + ' ' +
+                                                              padHex(str(hex(k4)[2:]),2) )))
+                            rev = addRoundKey(iSubBytes(addRoundKey(ct,key)), iSubBytes(addRoundKey(ft,key)))
+                            if rev[lInd(2,1)] == deltaMixCols[lInd(2,3)]:
+                                for p4 in range(0, 255):
+                                    key = shiftRows(transpose(bytearray.fromhex('00 00 00 00 00 00 00 00 00 00 00 00 ' +
+                                                                      padHex(str(hex(p1)[2:]),2) + ' ' +
+                                                                      padHex(str(hex(p2)[2:]),2) + ' ' +
+                                                                      padHex(str(hex(p3)[2:]),2) + ' ' +
+                                                                      padHex(str(hex(p4)[2:]),2) )))
+                                    rev = addRoundKey(iSubBytes(addRoundKey(ct,key)), iSubBytes(addRoundKey(ft,key)))
+                                    if rev[lInd(3,0)] == deltaMixCols[lInd(3,3)]:
                                         candidates.append(key); 
     return candidates
 
-keys = set()
 
-def lists_overlap(a, b):
-        return bool(set(a) & set(b))
-
+def printCandidate(candidate):
+    print( str(hex(candidate[lInd(0,3)])[2:]) + ' ' +
+           str(hex(candidate[lInd(1,2)])[2:]) + ' ' +
+           str(hex(candidate[lInd(2,1)])[2:]) + ' ' +
+           str(hex(candidate[lInd(3,0)])[2:]))
+    
 if __name__ == "__main__":
-       
     candidates1 = AESFaultAttack(ciphertext1, faultytext1)
     candidates2 = AESFaultAttack(ciphertext2, faultytext2)
-
-#    print(lists_overlap(candidates1,candidates2))
-
     
     for candidate in candidates1:
         if candidate in candidates2:
-            print(str(candidate) + " - yes")
-        else:
-            print(str(candidate) + " - no")
-    
-    
-#    print sharedItem(candidates1, candidates2)
+            printCandidate(candidate)
     
 
 # Note: after performing the attack twice, you can find the
